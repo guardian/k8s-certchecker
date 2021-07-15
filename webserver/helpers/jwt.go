@@ -63,7 +63,14 @@ func LoadPublicKey(filePath string) (string, error) {
 	return string(data), nil
 }
 
-func ValidateLogin(h *http.Request, certFile string, userNameClaims *[]string) (string, error) {
+func ValidateLogin(h *http.Request, certFile string) (string, error) {
+	userNameClaims := &[]string{
+		"preferred_username",
+		"username",
+		"user",
+		"sub",
+	}
+
 	rawData, rawErr := extractAuth(h)
 	if rawErr != nil {
 		return "", rawErr
