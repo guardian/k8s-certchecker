@@ -3,6 +3,7 @@ package certs
 import (
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"github.com/guardian/certchecker/datapersistence"
 	"testing"
 	"time"
 )
@@ -42,8 +43,8 @@ func TestValidateCertTimesExpired(t *testing.T) {
 
 	warnTime := time.Duration(3600 * time.Second)
 
-	result, err := ValidateCertTimes(&fakeCert, warnTime, "test")
-	if result != AfterExpiry {
-		t.Errorf("ValidateCertTimes gave wrong result, expected %d (AfterExpiry) got %d", AfterExpiry, result)
+	result, err := ValidateCertTimes(&fakeCert, warnTime, "test", "test")
+	if result.CheckResult != datapersistence.AfterExpiry {
+		t.Errorf("ValidateCertTimes gave wrong result, expected %d (AfterExpiry) got %d", datapersistence.AfterExpiry, result.CheckResult)
 	}
 }

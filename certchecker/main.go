@@ -4,8 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/guardian/certchecker/certfinder"
-	"github.com/guardian/certchecker/certs"
+	certfinder2 "github.com/guardian/certchecker/certchecker/certfinder"
+	certs2 "github.com/guardian/certchecker/certchecker/certs"
 	"github.com/guardian/certchecker/datapersistence"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -64,7 +64,7 @@ func main() {
 
 	clientset := getClientset(*kubeConfig)
 
-	foundCerts, scanErr := certfinder.ScanForCertificates(context.Background(), clientset)
+	foundCerts, scanErr := certfinder2.ScanForCertificates(context.Background(), clientset)
 	if scanErr != nil {
 		log.Fatal("Could not scan for certs: ", scanErr)
 	}
@@ -74,12 +74,12 @@ func main() {
 
 	for _, entry := range *foundCerts {
 		description := fmt.Sprintf("%s:%s", entry.Namespace, entry.SecretName)
-		cert, _, err := certs.LoadCert(entry.RawCertificateData, description)
+		cert, _, err := certs2.LoadCert(entry.RawCertificateData, description)
 		if err != nil {
 			log.Fatalf("Could not load %s as an x509 certificate: %s", description, err)
 		}
 
-		result, err := certs.ValidateCertTimes(cert, warningDuration, entry.Namespace, entry.SecretName)
+		result, err := certs2.ValidateCertTimes(cert, warningDuration, entry.Namespace, entry.SecretName)
 		if err != nil {
 			log.Fatalf("Could not validate %s: %s", description, err)
 		}

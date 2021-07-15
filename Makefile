@@ -1,13 +1,21 @@
-all: certchecker.linux64 certchecker.macos
+.PHONY: certchecker test clean docker
 
-certchecker.linux64: main.go certs/check_cert.go certfinder/scanner.go datapersistence/models.go datapersistence/writer.go
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o certchecker.linux64
+all: certchecker webserver
 
-certchecker.macos: main.go certs/check_cert.go certfinder/scanner.go datapersistence/models.go datapersistence/writer.go
-	GOOS=darwin GOARCH=amd64 go build -o certchecker.macos
+certchecker:
+	make -C certchecker/
 
-docker: certchecker.linux64
-	docker build . -t guardianmultimedia/certchecker:DEV
+webserver:
+	make -C webserver/
+
+test:
+	make -C certchecker/ test
+	make -C webserver/ test
 
 clean:
-	rm -f certchecker certchecker.linux64 certchecker.macos *.json
+	make -C certchecker/ clean
+	make -C webserver/ clean
+
+docker:
+	make -C certchecker/ docker
+	make -C webserver/ docker
