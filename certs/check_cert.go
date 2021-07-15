@@ -16,7 +16,10 @@ const (
 	WithinRange
 	NearExpiry
 	AfterExpiry
+	TooLongForChrome
 )
+
+const ChromeMaxValidityHours = 398 * 24
 
 func LoadCert(certPEM []byte, description string) (*x509.Certificate, bool, error) {
 	block, _ := pem.Decode(certPEM)
@@ -56,16 +59,21 @@ func ValidateCertTimes(cert *x509.Certificate, warningPeriod time.Duration, desc
 	nowTime := time.Now()
 	warnTime := nowTime.Add(warningPeriod)
 
+	log.Printf("INFO LoadCert %s is %f%% used", description, PercentUsed(&cert.NotBefore, &cert.NotAfter))
 	if nowTime.Before(cert.NotBefore) {
 		return NotValidYet, nil
 	} else if nowTime.After(cert.NotAfter) {
 		return AfterExpiry, nil
 	} else if warnTime.After(cert.NotAfter) {
-		log.Printf("INFO LoadCert %s is %f%% used", description, PercentUsed(&cert.NotBefore, &cert.NotAfter))
+
 		return NearExpiry, nil
 	} else {
-		log.Printf("INFO LoadCert %s is %f%% used", description, PercentUsed(&cert.NotBefore, &cert.NotAfter))
-		return WithinRange, nil
+		if cert.NotAfter.Sub(cert.NotBefore).Hours() > ChromeMaxValidityHours {
+			//log.Printf("WARNING LoadCert %s is TOO LONG FOR CHROME", description)
+			return TooLongForChrome, nil
+		} else {
+			return WithinRange, nil
+		}
 	}
 }
 

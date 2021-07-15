@@ -13,6 +13,8 @@ import (
 	"log"
 	"path"
 	"time"
+	//add auth plugins, required to use e.g. openid connect
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
 func getClientset(kubeconfigPath string) *kubernetes.Clientset {
@@ -85,6 +87,8 @@ func main() {
 			log.Printf("%s has already expired", description)
 		case certs.WithinRange:
 			log.Printf("%s is OK", description)
+		case certs.TooLongForChrome:
+			log.Printf("%s is too long to be valid in Chrome", description)
 		}
 	}
 }
