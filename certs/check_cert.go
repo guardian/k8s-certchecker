@@ -4,19 +4,9 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"github.com/guardian/certchecker/datapersistence"
 	"log"
 	"time"
-)
-
-type ValidationResult int
-
-const (
-	Errored = iota
-	NotValidYet
-	WithinRange
-	NearExpiry
-	AfterExpiry
-	TooLongForChrome
 )
 
 const ChromeMaxValidityHours = 398 * 24
@@ -55,24 +45,38 @@ arguments:
 current time, then the result is NearExpiry
 - description: descriptive string for logging
 */
-func ValidateCertTimes(cert *x509.Certificate, warningPeriod time.Duration, description string) (ValidationResult, error) {
+func ValidateCertTimes(cert *x509.Certificate, warningPeriod time.Duration, certName string, secretName string) (datapersistence.CheckRecord, error) {
 	nowTime := time.Now()
 	warnTime := nowTime.Add(warningPeriod)
 
-	log.Printf("INFO LoadCert %s is %f%% used", description, PercentUsed(&cert.NotBefore, &cert.NotAfter))
-	if nowTime.Before(cert.NotBefore) {
-		return NotValidYet, nil
-	} else if nowTime.After(cert.NotAfter) {
-		return AfterExpiry, nil
-	} else if warnTime.After(cert.NotAfter) {
+	log.Printf("INFO LoadCert %s is %f%% used", secretName, PercentUsed(&cert.NotBefore, &cert.NotAfter))
+	rec := datapersistence.CheckRecord{
+		Namespace:        certName,
+		SecretName:       secretName,
+		CheckedAt:        time.Now(),
+		CheckResult:      0,
+		ValidUntil:       cert.NotAfter,
+		PercentUsed:      PercentUsed(&cert.NotBefore, &cert.NotAfter),
+		TooLongForChrome: false,
+	}
 
-		return NearExpiry, nil
+	if nowTime.Before(cert.NotBefore) {
+		rec.CheckResult = datapersistence.NotValidYet
+		return rec, nil
+	} else if nowTime.After(cert.NotAfter) {
+		rec.CheckResult = datapersistence.AfterExpiry
+		return rec, nil
+	} else if warnTime.After(cert.NotAfter) {
+		rec.CheckResult = datapersistence.NearExpiry
+		return rec, nil
 	} else {
 		if cert.NotAfter.Sub(cert.NotBefore).Hours() > ChromeMaxValidityHours {
-			//log.Printf("WARNING LoadCert %s is TOO LONG FOR CHROME", description)
-			return TooLongForChrome, nil
+			rec.CheckResult = datapersistence.TooLongForChrome
+			rec.TooLongForChrome = true
+			return rec, nil
 		} else {
-			return WithinRange, nil
+			rec.CheckResult = datapersistence.WithinRange
+			return rec, nil
 		}
 	}
 }

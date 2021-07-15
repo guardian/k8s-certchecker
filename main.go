@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"github.com/guardian/certchecker/certfinder"
 	"github.com/guardian/certchecker/certs"
+	"github.com/guardian/certchecker/datapersistence"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	homedir2 "k8s.io/client-go/util/homedir"
 	"log"
+	"os"
 	"path"
 	"time"
 	//add auth plugins, required to use e.g. openid connect
@@ -33,8 +35,10 @@ func getClientset(kubeconfigPath string) *kubernetes.Clientset {
 
 func main() {
 	homedir := homedir2.HomeDir()
+	pwd, _ := os.Getwd()
 	//inputFile := flag.String("input", "", "filename to read")
 	kubeConfig := flag.String("kubeconfig", path.Join(homedir, ".kube", "config"), "kubeconfig file (only used if out of cluster)")
+	outputPath := flag.String("out", pwd, "path to create an output record in")
 	durationString := flag.String("warning", "720h", "expiry warning period")
 	flag.Parse()
 
@@ -66,6 +70,8 @@ func main() {
 	}
 	log.Printf("INFO Got %d certs", len(*foundCerts))
 
+	results := make([]datapersistence.CheckRecord, 0)
+
 	for _, entry := range *foundCerts {
 		description := fmt.Sprintf("%s:%s", entry.Namespace, entry.SecretName)
 		cert, _, err := certs.LoadCert(entry.RawCertificateData, description)
@@ -73,22 +79,30 @@ func main() {
 			log.Fatalf("Could not load %s as an x509 certificate: %s", description, err)
 		}
 
-		result, err := certs.ValidateCertTimes(cert, warningDuration, description)
+		result, err := certs.ValidateCertTimes(cert, warningDuration, entry.Namespace, entry.SecretName)
 		if err != nil {
 			log.Fatalf("Could not validate %s: %s", description, err)
 		}
 
-		switch result {
-		case certs.NotValidYet:
+		results = append(results, result)
+		switch result.CheckResult {
+		case datapersistence.NotValidYet:
 			log.Printf("%s is not valid yet", description)
-		case certs.NearExpiry:
+		case datapersistence.NearExpiry:
 			log.Printf("%s is near expiry", description)
-		case certs.AfterExpiry:
+		case datapersistence.AfterExpiry:
 			log.Printf("%s has already expired", description)
-		case certs.WithinRange:
+		case datapersistence.WithinRange:
 			log.Printf("%s is OK", description)
-		case certs.TooLongForChrome:
+		case datapersistence.TooLongForChrome:
 			log.Printf("%s is too long to be valid in Chrome", description)
 		}
+	}
+
+	writeErr := datapersistence.WriteData(*outputPath, &results)
+	if writeErr != nil {
+		log.Fatalf("ERROR Could not write out final report: %s", writeErr)
+	} else {
+		log.Print("All done.")
 	}
 }
