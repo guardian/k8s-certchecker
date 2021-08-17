@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/guardian/certchecker/webserver/helpers"
+	"github.com/guardian/k8s-certchecker/webserver/helpers"
 	"io"
 	"log"
 	"net/http"

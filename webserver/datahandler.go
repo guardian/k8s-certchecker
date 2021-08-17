@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/guardian/certchecker/webserver/helpers"
+	"github.com/guardian/k8s-certchecker/webserver/helpers"
 	"io"
 	"io/ioutil"
 	"log"

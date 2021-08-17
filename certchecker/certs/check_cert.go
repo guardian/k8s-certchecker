@@ -4,7 +4,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
-	"github.com/guardian/certchecker/datapersistence"
+	"github.com/guardian/k8s-certchecker/datapersistence"
 	"log"
 	"time"
 )

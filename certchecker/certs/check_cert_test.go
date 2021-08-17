@@ -3,7 +3,7 @@ package certs
 import (
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"github.com/guardian/certchecker/datapersistence"
+	"github.com/guardian/k8s-certchecker/datapersistence"
 	"testing"
 	"time"
 )
