@@ -6,6 +6,7 @@ import (
 	"flag"
 	"github.com/google/uuid"
 	"github.com/guardian/k8s-certchecker/requestor"
+	"github.com/micromdm/scep/scep"
 	"log"
 	"os"
 )
@@ -55,27 +56,64 @@ func main() {
 	}
 
 	log.Printf("Done. Sending request...")
-	response, err := requestor.SendRequest(*serverBasePtr, "PKCSReq", req)
+	response, err := requestor.SendRequest(*serverBasePtr, "PKIOperation", req)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	if response == nil {
+		log.Fatal("Internal error, nill response from SendRequest")
+	}
 	log.Printf("Success!")
 
-	pemBlock := pem.Block{
-		Type:    "CERTIFICATE",
-		Headers: map[string]string{},
-		Bytes:   response.Certificate.Raw,
+	log.Printf("%v", response.MessageType)
+
+	log.Printf("%v", response.Certificate)
+	log.Printf("%v", response.PKIStatus)
+	log.Printf("%v", response)
+
+	if response.MessageType != scep.CertRep {
+		log.Printf("WARNING received unexpected message type %s, see https://datatracker.ietf.org/doc/html/rfc8894#section-3.2.1.2 for explanation", response.MessageType)
 	}
-	f, openErr := os.OpenFile(*output, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-	if openErr != nil {
-		log.Printf("ERROR can't open %s to write: %s", *output, err)
-		f = os.Stdout
+	switch response.PKIStatus {
+	case scep.FAILURE:
+		// see https://datatracker.ietf.org/doc/html/rfc8894#section-3.2.1.4
+		var failureString string
+		switch response.FailInfo {
+		case scep.BadAlg:
+			failureString = "Invalid signing algorithm"
+		case scep.BadMessageCheck:
+			failureString = "Signature verification of the request failed"
+		case scep.BadRequest:
+			failureString = "Transaction not permitted or supported"
+		case scep.BadTime:
+			failureString = "signingTime was not close enough to system time, re-issue the request"
+		case scep.BadCertID:
+			failureString = "No certificate could be identified matching the provided criteria"
+		}
+		log.Printf("INFO Certificate issue failed: %s", failureString)
+		break
+	case scep.PENDING:
+		log.Printf("INFO Certificate issue is in a 'pending' state, please contact the sysadmin to progress")
+		break
+	case scep.SUCCESS:
+		pemBlock := pem.Block{
+			Type:    "CERTIFICATE",
+			Headers: map[string]string{},
+			Bytes:   response.Certificate.Raw,
+		}
+		f, openErr := os.OpenFile(*output, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+		if openErr != nil {
+			log.Printf("ERROR can't open %s to write: %s", *output, err)
+			f = os.Stdout
+		}
+		defer f.Close()
+
+		err = pem.Encode(f, &pemBlock)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
-	err = pem.Encode(f, &pemBlock)
-	if err != nil {
-		log.Fatal(err)
-	}
 	log.Printf("All done")
 }
