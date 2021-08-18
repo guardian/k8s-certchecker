@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/form3tech-oss/jwt-go v3.2.3+incompatible
+	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa // indirect
 	github.com/go-openapi/spec v0.19.3 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/h2non/filetype v1.1.1
