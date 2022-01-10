@@ -1,3 +1,4 @@
 certchecker.*
+!certchecker.yaml
 *.json
 webserver.*

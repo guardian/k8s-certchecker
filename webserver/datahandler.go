@@ -68,7 +68,7 @@ func findReports(dataRoot string) ([]string, error) {
 func tryToOutput(w http.ResponseWriter, filepath string) bool {
 	fp, openErr := os.Open(filepath)
 	if openErr != nil {
-		log.Printf("ERROR DataHandler could not open '%s': %s", filepath)
+		log.Printf("ERROR DataHandler could not open '%s': %s", filepath, openErr)
 		return false
 	}
 	defer fp.Close()

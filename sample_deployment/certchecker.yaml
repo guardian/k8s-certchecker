@@ -1,0 +1,70 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: cert-checker
+spec:
+  suspend: false
+  #format is minute-hour-dayofmonth-month-year
+  schedule: "0 21 * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: cert-checker
+          containers:
+            - name: cert-checker
+              securityContext:
+                allowPrivilegeEscalation: false
+              image: myorg.io/certchecker/certchecker:DEV
+              args:
+                - "/usr/local/bin/certchecker"
+                - "-out"
+                - "/data"
+              resources:
+                requests:
+                  cpu: 1
+                  memory: 100Mi
+                limits:
+                  cpu: 1
+                  memory: 100Mi
+              volumeMounts:
+                - name: logs
+                  mountPath: /data
+          volumes:
+            - name: logs
+              persistentVolumeClaim:
+                claimName: certchecker-logs
+          restartPolicy: Never
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cert-checker
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - namespaces
+      - secrets
+    verbs:
+      - get
+      - list
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cert-checker
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cert-checker-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cert-checker
+subjects:
+  - kind: ServiceAccount
+    name: cert-checker
+    namespace: pluto-ng-dev
