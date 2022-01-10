@@ -21,8 +21,11 @@ spec:
                 - "/usr/local/bin/certchecker"
                 - "-out"
                 - "/data"
-              resources:  #we don't expect to exceed these, but it's here to show up in the accounting and prevent all backup processes getting scheduled to the same place
+              resources:
                 requests:
+                  cpu: 1
+                  memory: 100Mi
+                limits:
                   cpu: 1
                   memory: 100Mi
               volumeMounts:
